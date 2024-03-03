@@ -1,6 +1,7 @@
 <p align="center">
     <a href='https://govee.com/' rel='nofollow'>
-        <img src='https://cdn.shopify.com/s/files/1/0559/0102/8558/files/logo_73bb6329-d5ab-4654-8a62-01ba54a26f49_100x.png?v=1651047319' alt='Govee Logo' /></a>br>
+        <img src='https://cdn.shopify.com/s/files/1/0559/0102/8558/files/logo_73bb6329-d5ab-4654-8a62-01ba54a26f49_100x.png?v=1651047319' alt='Govee Logo' />
+<br>
         <img src='resources/images/H6047.png' alt='Govee Logo' />
     </a>
 </p>
