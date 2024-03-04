@@ -27,7 +27,7 @@ A Govee DreamSync replacement for the H6047 that isn't Chinese spyware.
 ```bash
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-
+ 
 ```
 
 ### Ubuntu 22.04
@@ -42,4 +42,5 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 
 ## Reference
 
+[Govee LAN API Reference](https://app-h5.govee.com/user-manual/wlan-guide)
 [Govee Developer API Reference](https://govee-public.s3.amazonaws.com/developer-docs/GoveeDeveloperAPIReference.pdf)
