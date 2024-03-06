@@ -1,5 +1,6 @@
-qt_add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC Qt6::Core Qt6::Widgets)
+qt6_add_resources(RESOURCES ../resources/resources.qrc)
+qt_add_executable(${PROJECT_NAME} main.cpp ${RESOURCES})
+target_link_libraries(${PROJECT_NAME} PUBLIC Qt6::Core Qt6::Widgets nlohmann_json::nlohmann_json)
 set_target_properties(${PROJECT_NAME} PROPERTIES
         WIN32_EXECUTABLE ON
         MACOSX_BUNDLE ON

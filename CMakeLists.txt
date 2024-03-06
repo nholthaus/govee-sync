@@ -22,4 +22,5 @@ else ()
     set(CMAKE_AUTOUIC ON)
 endif ()
 
+add_subdirectory(3rdParty)
 add_subdirectory(src)
