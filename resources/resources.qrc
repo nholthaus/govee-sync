@@ -3,4 +3,7 @@
     <qresource prefix="/icons">
         <file alias="govee">icons/govee_logo.ico</file>
     </qresource>
+    <qresource prefix="/images">
+        <file alias="H6047">images/H6047.png</file>
+    </qresource>
 </RCC>
