@@ -23,4 +23,5 @@ else ()
 endif ()
 
 add_subdirectory(3rdParty)
+add_subdirectory(lib)
 add_subdirectory(src)

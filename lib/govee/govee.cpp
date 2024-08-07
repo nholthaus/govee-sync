@@ -69,7 +69,7 @@ Govee::Govee(QObject* parent)
 //----------------------------------------------------------------------------------------------------------------------
 ///
 //----------------------------------------------------------------------------------------------------------------------
-void Govee::scan()
+void Govee::scan() const
 {
 	json scanMsg;
 	scanMsg["msg"]["cmd"]                   = "scan";
@@ -88,7 +88,7 @@ void Govee::scan()
 ///
 ///
 //----------------------------------------------------------------------------------------------------------------------
-void Govee::turnOff()
+void Govee::turnOff() const
 {
 	json turnOff;
 	turnOff["msg"]["cmd"]           = "turn";
@@ -96,7 +96,7 @@ void Govee::turnOff()
 	qDebug() << turnOff.dump();
 	qDebug() << turnOff.dump().size();
 
-	m_socket->writeDatagram(turnOff.dump().c_str(), turnOff.dump().size(), QHostAddress("192.168.23.23"), 4003);
+	m_socket->writeDatagram(turnOff.dump().c_str(), static_cast<qint64>(turnOff.dump().size()), QHostAddress("192.168.23.23"), 4003);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ void Govee::turnOff()
 ///
 ///
 //----------------------------------------------------------------------------------------------------------------------
-void Govee::turnOn()
+void Govee::turnOn() const
 {
 	json turnOff;
 	turnOff["msg"]["cmd"]           = "turn";
@@ -113,7 +113,7 @@ void Govee::turnOn()
 	qDebug() << turnOff.dump();
 	qDebug() << turnOff.dump().size();
 
-	m_socket->writeDatagram(turnOff.dump().c_str(), turnOff.dump().size(), QHostAddress("192.168.23.23"), 4003);
+	m_socket->writeDatagram(turnOff.dump().c_str(), static_cast<qint64>(turnOff.dump().size()), QHostAddress("192.168.23.23"), 4003);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -174,5 +174,5 @@ QHostAddress Govee::getIPv4Address(const QNetworkInterface& iface)
 			return entry.ip();
 		}
 	}
-	return QHostAddress();
+	return {};
 }

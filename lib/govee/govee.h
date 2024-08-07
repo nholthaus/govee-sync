@@ -20,15 +20,15 @@
 class Govee : public QObject
 {
 public:
-	Govee(QObject* parent = nullptr);
+	explicit Govee(QObject* parent = nullptr);
 
 	//----------------------------
 	//  MESSAGES
 	//----------------------------
 
-	void scan();
-	void turnOff();
-	void turnOn();
+	void scan() const;
+	void turnOff() const;
+	void turnOn() const;
 
 public slots:
 	void receiveDatagram();

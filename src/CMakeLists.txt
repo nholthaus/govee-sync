@@ -1,10 +1,10 @@
 qt6_add_resources(RESOURCES ../resources/resources.qrc)
 qt_add_executable(${PROJECT_NAME} ${RESOURCES}
         main.cpp
-        govee.cpp
-        govee.h)
+)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+        govee
         Qt6::Core
         Qt6::Widgets
         Qt6::Network
