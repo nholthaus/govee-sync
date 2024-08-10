@@ -14,6 +14,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
         Qt6::Core
+        Qt6::Widgets
         Qt6::Network
         nlohmann_json::nlohmann_json
 )

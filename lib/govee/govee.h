@@ -9,8 +9,11 @@
 //  INCLUDES
 //----------------------------
 
+#include "goveeDevice.h"
+
 #include <QObject>
 #include <QUdpSocket>
+#include <nlohmann/json.hpp>
 
 //----------------------------------------------------------------------------------------------------------------------
 //      CLASS: Govee
@@ -34,14 +37,16 @@ public slots:
 	void receiveDatagram();
 
 private:
-	static QNetworkInterface getPrimaryInterface();
-	static QHostAddress getIPv4Address(const QNetworkInterface &iface);
+	[[nodiscard]] static QHostAddress getIPv4Address(const QNetworkInterface& iface);
+	[[nodiscard]] static QString      getData(const nlohmann::json& msg, std::string_view field);
 
+	void createSockets();
+	void handleScanResponse(const nlohmann::json& msg) noexcept(false);
 signals:
 
 private:
-	QUdpSocket* m_socket = nullptr;
-
+	QList<QUdpSocket*>         m_sockets;
+	QMap<QString, GoveeDevice> m_devices;
 };
 
-#endif // GOVEE_SYNC_GOVEE_H
+#endif    // GOVEE_SYNC_GOVEE_H

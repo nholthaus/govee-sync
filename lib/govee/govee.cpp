@@ -36,38 +36,21 @@ using namespace nlohmann;
 //======================================================================================================================
 
 //----------------------------------------------------------------------------------------------------------------------
-//      FUNCTION:  []
+//      FUNCTION: Govee [public]
 //----------------------------------------------------------------------------------------------------------------------
-/// @brief
-/// @param parent
+/// @brief      Constructor
+/// @param[in]  parent Qt parent object.
 //----------------------------------------------------------------------------------------------------------------------
 Govee::Govee(QObject* parent)
     : QObject(parent)
-    , m_socket(new QUdpSocket(this))
 {
-	// Retrieve the specific network interface named "Ethernet"
-	auto primaryNetworkInterface = getPrimaryInterface();
-	auto ipAddress = getIPv4Address(primaryNetworkInterface);
-
-	if (!m_socket->bind(ipAddress, 4002, QUdpSocket::ShareAddress))
-	{
-		qWarning() << "Failed to bind socket:" << m_socket->errorString();
-		return;
-	}
-
-	if (!m_socket->joinMulticastGroup(QHostAddress("239.255.255.250"), primaryNetworkInterface))
-	{
-		qWarning() << "Failed to join multicast group:" << m_socket->errorString();
-		return;
-	}
-
-	connect(m_socket, &QUdpSocket::readyRead, this, &Govee::receiveDatagram);
+	createSockets();
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-//      FUNCTION:  []
+//      FUNCTION: scan [public]
 //----------------------------------------------------------------------------------------------------------------------
-///
+/// @brief      Scan all the network interfaces for Govee devices.
 //----------------------------------------------------------------------------------------------------------------------
 void Govee::scan() const
 {
@@ -76,17 +59,19 @@ void Govee::scan() const
 	scanMsg["msg"]["data"]["account_topic"] = "reserve";
 	std::cout << scanMsg.dump() << std::endl;
 
-	std::string jsonString = scanMsg.dump();
-	QByteArray  data(jsonString.c_str(), static_cast<int>(jsonString.length()));
-	auto        bytes = m_socket->writeDatagram(data, QHostAddress("239.255.255.250"), 4001);
-	std::cout << bytes << std::endl;
+	for (auto* socket : m_sockets)
+	{
+		std::cout << "scanning: " << socket->objectName().toStdString() << std::endl;
+		std::string jsonString = scanMsg.dump();
+		QByteArray  data(jsonString.c_str(), static_cast<int>(jsonString.length()));
+		socket->writeDatagram(data, QHostAddress("239.255.255.250"), 4001);
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-//      FUNCTION:  []
+//      FUNCTION: turnOff [public]
 //----------------------------------------------------------------------------------------------------------------------
-///
-///
+/// @brief      turn off the device
 //----------------------------------------------------------------------------------------------------------------------
 void Govee::turnOff() const
 {
@@ -96,14 +81,13 @@ void Govee::turnOff() const
 	qDebug() << turnOff.dump();
 	qDebug() << turnOff.dump().size();
 
-	m_socket->writeDatagram(turnOff.dump().c_str(), static_cast<qint64>(turnOff.dump().size()), QHostAddress("192.168.23.23"), 4003);
+	m_sockets[0]->writeDatagram(turnOff.dump().c_str(), static_cast<qint64>(turnOff.dump().size()), QHostAddress("192.168.23.23"), 4003);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-//      FUNCTION:  []
+//      FUNCTION: turnOn [public]
 //----------------------------------------------------------------------------------------------------------------------
-///
-///
+/// @brief      turn on the device
 //----------------------------------------------------------------------------------------------------------------------
 void Govee::turnOn() const
 {
@@ -113,7 +97,52 @@ void Govee::turnOn() const
 	qDebug() << turnOff.dump();
 	qDebug() << turnOff.dump().size();
 
-	m_socket->writeDatagram(turnOff.dump().c_str(), static_cast<qint64>(turnOff.dump().size()), QHostAddress("192.168.23.23"), 4003);
+	m_sockets[0]->writeDatagram(turnOff.dump().c_str(), static_cast<qint64>(turnOff.dump().size()), QHostAddress("192.168.23.23"), 4003);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//      FUNCTION: getData [private]
+//----------------------------------------------------------------------------------------------------------------------
+/// @brief      Extract data from Govee JSON message
+/// @param[in]  msg json message response
+/// @param[in]  field string name of the field to extract
+/// @return     value of the field as a QString.
+//----------------------------------------------------------------------------------------------------------------------
+QString Govee::getData(const nlohmann::json& msg, std::string_view field)
+{
+	return to_string(msg["msg"]["data"].at(field)).data();
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//      FUNCTION: handleScanResponse [private]
+//----------------------------------------------------------------------------------------------------------------------
+/// @brief      Handle scan-response message
+/// @param[in]  msg message to handle
+//----------------------------------------------------------------------------------------------------------------------
+void Govee::handleScanResponse(const nlohmann::json& msg) noexcept(false)
+{
+	if (msg["msg"]["cmd"] == "scan")
+	{
+		QString deviceName = getData(msg, "device");
+		QString ipAddress = getData(msg, "ip");
+
+		if (!m_devices.contains(deviceName))
+		{
+//			std::cout << msg["msg"]["data"]["device"] << std::endl;
+
+			GoveeDevice device;
+			device.setDevice(deviceName);
+			device.setSku(getData(msg, "sku"));
+			device.setIpAddress(QHostAddress(ipAddress));
+			device.setBleVersionHard(getData(msg, "bleVersionHard"));
+			device.setBleVersionSoft(getData(msg, "bleVersionSoft"));
+			device.setWifiVersionHard(getData(msg, "wifiVersionHard"));
+			device.setWifiVersionSoft(getData(msg, "wifiVersionSoft"));
+
+			std::cout << device << std::endl;
+			m_devices[deviceName] = device;
+		}
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -123,20 +152,30 @@ void Govee::turnOn() const
 //----------------------------------------------------------------------------------------------------------------------
 void Govee::receiveDatagram()
 {
-	while (m_socket->hasPendingDatagrams())
-		std::cout << m_socket->receiveDatagram().data().toStdString() << std::endl;
+	for (auto* socket : m_sockets)
+	{
+		while (socket->hasPendingDatagrams())
+		{
+			QByteArray     data = socket->receiveDatagram().data();
+			nlohmann::json msg  = nlohmann::json::parse(data);
+			std::cout << socket->objectName().toStdString() << ": " << msg.dump() << std::endl;
+
+			if (msg.contains("msg") && msg["msg"].contains("cmd"))
+			{
+				handleScanResponse(msg);
+			}
+		}
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-//      FUNCTION:  []
+//      FUNCTION: createSockets [private]
 //----------------------------------------------------------------------------------------------------------------------
-///
-///
+/// @brief      Query all the network interfaces to find Govee devices.
 //----------------------------------------------------------------------------------------------------------------------
-QNetworkInterface Govee::getPrimaryInterface()
+void Govee::createSockets()
 {
 	QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
-	QNetworkInterface        primaryInterface;
 
 	for (const QNetworkInterface& iface : interfaces)
 	{
@@ -149,21 +188,37 @@ QNetworkInterface Govee::getPrimaryInterface()
 			{
 				if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol)
 				{
-					primaryInterface = iface;
-					return primaryInterface;    // Return the first suitable interface found
+
+					auto ipAddress = getIPv4Address(iface);
+					std::cout << "Interface: " << iface.humanReadableName().toStdString() << std::endl;
+					auto* socket = new QUdpSocket(this);
+
+					if (!socket->bind(ipAddress, 4002, QUdpSocket::ShareAddress))
+					{
+						return;
+					}
+
+					if (!socket->joinMulticastGroup(QHostAddress("239.255.255.250"), iface))
+					{
+						return;
+					}
+
+					connect(socket, &QUdpSocket::readyRead, this, &Govee::receiveDatagram);
+
+					socket->setObjectName(iface.humanReadableName());
+					m_sockets.push_back(socket);
 				}
 			}
 		}
 	}
-
-	return primaryInterface;    // Will be invalid if no suitable interface is found
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-//      FUNCTION:  []
+//      FUNCTION: getIPv4Address [private]
 //----------------------------------------------------------------------------------------------------------------------
-///
-///
+/// @brief      Get host address of a network interface
+/// @param[in]  iface network interface to query
+/// @return     IPv4 address associtated with the network interface
 //----------------------------------------------------------------------------------------------------------------------
 QHostAddress Govee::getIPv4Address(const QNetworkInterface& iface)
 {
