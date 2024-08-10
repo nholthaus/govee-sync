@@ -110,7 +110,7 @@ void Govee::turnOn() const
 //----------------------------------------------------------------------------------------------------------------------
 QString Govee::getData(const nlohmann::json& msg, std::string_view field)
 {
-	return to_string(msg["msg"]["data"].at(field)).data();
+	return QString(to_string(msg["msg"]["data"].at(field)).data()).remove("\"");
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -124,16 +124,13 @@ void Govee::handleScanResponse(const nlohmann::json& msg) noexcept(false)
 	if (msg["msg"]["cmd"] == "scan")
 	{
 		QString deviceName = getData(msg, "device");
-		QString ipAddress = getData(msg, "ip");
 
 		if (!m_devices.contains(deviceName))
 		{
-//			std::cout << msg["msg"]["data"]["device"] << std::endl;
-
 			GoveeDevice device;
 			device.setDevice(deviceName);
 			device.setSku(getData(msg, "sku"));
-			device.setIpAddress(QHostAddress(ipAddress));
+			device.setIpAddress(QHostAddress(getData(msg, "ip")));
 			device.setBleVersionHard(getData(msg, "bleVersionHard"));
 			device.setBleVersionSoft(getData(msg, "bleVersionSoft"));
 			device.setWifiVersionHard(getData(msg, "wifiVersionHard"));
