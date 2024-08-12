@@ -42,9 +42,11 @@ using namespace nlohmann;
 /// @param[in]  parent Qt parent object.
 //----------------------------------------------------------------------------------------------------------------------
 Govee::Govee(QObject* parent)
-    : QObject(parent)
+	: QObject(parent)
 {
 	createSockets();
+
+	m_timerId = this->startTimer(1000);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -108,10 +110,7 @@ void Govee::turnOn() const
 /// @param[in]  field string name of the field to extract
 /// @return     value of the field as a QString.
 //----------------------------------------------------------------------------------------------------------------------
-QString Govee::getData(const nlohmann::json& msg, std::string_view field)
-{
-	return QString(to_string(msg["msg"]["data"].at(field)).data()).remove("\"");
-}
+QString Govee::getData(const nlohmann::json& msg, std::string_view field) { return QString(to_string(msg["msg"]["data"].at(field)).data()).remove("\""); }
 
 //----------------------------------------------------------------------------------------------------------------------
 //      FUNCTION: handleScanResponse [private]
@@ -138,6 +137,8 @@ void Govee::handleScanResponse(const nlohmann::json& msg) noexcept(false)
 
 			std::cout << device << std::endl;
 			m_devices[deviceName] = device;
+
+			this->killTimer(m_timerId);
 		}
 	}
 }
@@ -157,12 +158,21 @@ void Govee::receiveDatagram()
 			nlohmann::json msg  = nlohmann::json::parse(data);
 			std::cout << socket->objectName().toStdString() << ": " << msg.dump() << std::endl;
 
-			if (msg.contains("msg") && msg["msg"].contains("cmd"))
-			{
-				handleScanResponse(msg);
-			}
+			if (msg.contains("msg") && msg["msg"].contains("cmd")) { handleScanResponse(msg); }
 		}
 	}
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//      FUNCTION: timerEvent [protected]
+//----------------------------------------------------------------------------------------------------------------------
+/// @brief      Called on timeout
+/// @param[in]  event timer event object.
+//----------------------------------------------------------------------------------------------------------------------
+void Govee::timerEvent(QTimerEvent* event)
+{
+	QObject::timerEvent(event);
+	scan();
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -177,28 +187,20 @@ void Govee::createSockets()
 	for (const QNetworkInterface& iface : interfaces)
 	{
 		if (iface.flags().testFlag(QNetworkInterface::IsUp) &&
-		    iface.flags().testFlag(QNetworkInterface::IsRunning) &&
-		    !iface.flags().testFlag(QNetworkInterface::IsLoopBack))
+			iface.flags().testFlag(QNetworkInterface::IsRunning) &&
+			!iface.flags().testFlag(QNetworkInterface::IsLoopBack))
 		{
-
 			for (const QNetworkAddressEntry& entry : iface.addressEntries())
 			{
 				if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol)
 				{
-
 					auto ipAddress = getIPv4Address(iface);
 					std::cout << "Interface: " << iface.humanReadableName().toStdString() << std::endl;
 					auto* socket = new QUdpSocket(this);
 
-					if (!socket->bind(ipAddress, 4002, QUdpSocket::ShareAddress))
-					{
-						return;
-					}
+					if (!socket->bind(ipAddress, 4002, QUdpSocket::ShareAddress)) { return; }
 
-					if (!socket->joinMulticastGroup(QHostAddress("239.255.255.250"), iface))
-					{
-						return;
-					}
+					if (!socket->joinMulticastGroup(QHostAddress("239.255.255.250"), iface)) { return; }
 
 					connect(socket, &QUdpSocket::readyRead, this, &Govee::receiveDatagram);
 
@@ -219,12 +221,6 @@ void Govee::createSockets()
 //----------------------------------------------------------------------------------------------------------------------
 QHostAddress Govee::getIPv4Address(const QNetworkInterface& iface)
 {
-	for (const QNetworkAddressEntry& entry : iface.addressEntries())
-	{
-		if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol)
-		{
-			return entry.ip();
-		}
-	}
+	for (const QNetworkAddressEntry& entry : iface.addressEntries()) { if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol) { return entry.ip(); } }
 	return {};
 }

@@ -23,6 +23,7 @@
 class Govee : public QObject
 {
 public:
+
 	explicit Govee(QObject* parent = nullptr);
 
 	//----------------------------
@@ -34,9 +35,15 @@ public:
 	void turnOn() const;
 
 public slots:
+
 	void receiveDatagram();
 
+protected:
+
+	void timerEvent(QTimerEvent* event) override;
+
 private:
+
 	[[nodiscard]] static QHostAddress getIPv4Address(const QNetworkInterface& iface);
 	[[nodiscard]] static QString      getData(const nlohmann::json& msg, std::string_view field);
 
@@ -45,8 +52,10 @@ private:
 signals:
 
 private:
+
 	QList<QUdpSocket*>         m_sockets;
 	QMap<QString, GoveeDevice> m_devices;
+	int                        m_timerId{0};
 };
 
 #endif    // GOVEE_SYNC_GOVEE_H

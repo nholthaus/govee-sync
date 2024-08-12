@@ -33,7 +33,5 @@ int main(int argc, char* argv[])
 
 	Govee govee;
 
-	RUN_ONCE_STARTED(govee.scan())
-
 	return QApplication::exec();
 }
